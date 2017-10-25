@@ -18,8 +18,8 @@ float b = b0, d = d0;     // current values of the width of bottom of dress (on 
 float _p = b0, _q = d0;     // global values of the radii of the left and right arcs of the dress (user edited)
 
 // Animation
-boolean animating = true; // animation status: running/stopped
-float t=0.1;               // current animaiton time
+boolean animating = false; // animation status: running/stopped
+float t=0.5;               // current animaiton time
 
 // snapping a picture
 import processing.pdf.*;    // to save screen shots as PDFs
@@ -42,15 +42,20 @@ void setup()              // run once
     for(int i=0; i<n; i++) println("i="+i);
   }
  
-void draw()             // loops forever
+void draw()            // loops forever
   {
   if(snapPic) beginRecord(PDF,PicturesOutputPath+"/P"+nf(pictureCounter++,3)+".pdf"); // start recording for PDF image capture
-  if(animating) computeParametersForAnimationTime(t);
   background(255);      // erase canvas at each frame
+  if(animating) computeParametersForAnimationTime(t);
   stroke(0);            // change drawing color to black
   line(0, g, width, g); // draws gound
   noStroke(); 
-  if(showControlFrames) {fill(0,255,255); paintShape(x0,y0,r0,b0,d0); fill(255,0,255); paintShape(x1,y0,r0,b0,d0);}
+  if(showControlFrames) {
+    fill(0,255,255);
+    paintShape(x0,y0,r0,b0,d0);
+    fill(255,0,255);
+    paintShape(x1,y0,r0,b0,d0);
+  }
   if(showStrobeFrames) 
     {
     float xx=x, yy=y, rr=r, bb=b, dd=d;
@@ -65,13 +70,15 @@ void draw()             // loops forever
     println();
     x=xx; y=yy; r=rr; b=bb; d=dd;
     }
-  fill(0); paintShape(x,y,r,b,d); // displays current shape
+  fill(0);
+    paintShape(x,y,r,b,d); // displays current shape
   if(showConstruction) {noFill(); showConstruction(x,y,r,b,d);} // displays blend construction lines and circles
   showGUI(); // shows mouse location and key pressed
   if(snapPic) {endRecord(); snapPic=false;} // end saving a .pdf of the screen
   if(filming && (animating || change)) saveFrame("FRAMES/F"+nf(frameCounter++,4)+".tif"); // saves a movie frame 
   if(animating) {t+=0.01; if(t>=1) {t=1; animating=false;}} // increments timing and stops when animation is complete
   change=false; // reset to avoid rendering movie frames for which nothing changes
+  calcCircle(x, g - y, 5 * PI / 4, r);
   }
 
 void keyPressed()
@@ -83,6 +90,7 @@ void keyPressed()
   if(key=='c') showConstruction=!showConstruction;
   if(key=='s') showStrobeFrames=!showStrobeFrames;
   if(key=='a') {animating=true; t=0;}  // start animation
+  if(key=='p') {animating=!animating; }  // start animation
   change=true; // reset to render movie frames for which something changes
   }
   
@@ -174,17 +182,73 @@ void showGUI()
 // computes current values of parameters x, y, r, b, d for animation parameter t
 // so as to produce a smooth and aesthetically pleasing animation
 // that conveys a specific emotion/enthusiasm of the moving shape
-void computeParametersForAnimationTime(float t) // computes parameters x, y, r, b, d for current t value
-  {
-  x = x0 + t*(x1-x0);
-  y = y0 - y0*0.3*sqrt(sin(PI*t));
-  b = b0 + b0*0.8*sqrt(sin(PI*t));
-  d = d0 - d0*0.4*sqrt(sin(PI*t));
-  }
-  
+void computeParametersForAnimationTime(float t) { // computes parameters x, y, r, b, d for current t value
+    // Linear default
+    // x = x0 + t * (x1-x0);
+    // y = y0 - y0 * 0.3 * sqrt(sin(PI * t));
+    // b = b0 + b0 * 0.8 * sqrt(sin(PI * t));
+    // d = d0 - d0 * 0.4 * sqrt(sin(PI * t));
+
+    x = x0 + t * (x1-x0);
+    // y = y0 + t * (y0-y0);
+    // y = y0 + 0.5 * y0 * sin(2 * PI * t - PI);
+    b = b0 + t * (b0-b0);
+    d = d0 + t * (d0-d0);
+    println("running " + x + " " + y);
+
+    PVector leftCircle = calcCircle(x, g - y, 5 * PI / 4, r);
+    b = x - leftCircle.x;
+    _p = 100;
+
+    // y = y0 - y0 * 0.3 * sqrt(sin(PI * t));
+    // b = b0 + b0 * 0.8 * sqrt(sin(PI * t));
+    // d = d0 - d0 * 0.4 * sqrt(sin(PI * t));
+}
+
+PVector calcCircle(float x, float y, float theta, float r) {
+    // tangent point
+    float tangent_x = x + r * cos(theta); // 92
+    float tangent_y = x + r * sin(theta); // 92
+    // tangent line
+    // it's perpendicular to:
+    float perpendicular_m = (tangent_y - y) / (tangent_x - x); 
+    float perpendicular_b = tangent_y - perpendicular_m * tangent_x;
+    stroke(#FF0000);
+    ellipse(tangent_x, g - tangent_y - (height - g), 5, 5);
+    stroke(#00FF00);
+    ellipse(x, g - y, 5, 5);
+    flipLine(tangent_x, tangent_y - (height - g), x, y);
+
+
+
+    float tangent_m = -perpendicular_m;
+    float tangent_b = tangent_y - tangent_m * tangent_x;
+
+    // now find center line
+    float tangent_theta = tan(tangent_m);
+    float center_theta = tangent_theta / 2.0;
+    float center_m = atan(center_theta);
+
+    // find point on center line, it's where the tangent intersects the x-axis
+    float center_root = -tangent_b / tangent_m;
+
+    stroke(#FF0000);
+    flipLine(center_root, 0, tangent_x, tangent_y);
+    float center_b = -center_m * center_root;
+
+    float circle_x = (center_b - perpendicular_b) / (perpendicular_m - center_m);
+    float circle_y = center_m * circle_x + center_b;
+    stroke(#0000FF);
+    flipLine(circle_x, circle_y, center_root, 0);
+    return new PVector(circle_x, circle_y);
+}
+
+void flipLine(float x, float y, float x1, float y1) {
+    line(x, g - y - (height - g), x1, g - y1 - (height - g));
+}
+
 //*********** TO BE PROVIDED BY STUDENTS  
 // compute blend radius tangent to x-axis at point (0,0) and circle of center (b,y) and radius r   
-float blendRadius(float b, float y, float r) 
-  {
-  return 100; // replace with your formula
-  }
+float blendRadius(float b, float y, float r) {
+    return 0; // replace with your formula
+}
