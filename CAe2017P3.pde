@@ -8,18 +8,18 @@ boolean computingBlendRadii=false; // toggles whether blend radii are computed o
 
 // Variables that control the shape
 float g = 350;            // ground height measured downward from top of canvas
-float x0 = 160, x1 = 850; // initial & final coordinate of disk center 
+float x0 = 160, x1 = 850; // initial & final coordinate of disk center pink and blue
 float y0 = 200;           // initial & final vertical coordinate of disk center above ground (y is up)
 float x = x0, y = y0;     // current coordinates of disk center 
-float r0 = 50;            // initial & final disk radius
+float r0 = 50;            // initial & final disk radius black circle
 float r = r0;             // current disk radius
-float b0 = 100, d0 = 130;   // initial & final values of the width of bottom of dress (on both sides of x)
+float b0 = 80, d0 = 130;   // initial & final values of the width of bottom of dress (on both sides of x)
 float b = b0, d = d0;     // current values of the width of bottom of dress (on both sides of x)
 float _p = b0, _q = d0;     // global values of the radii of the left and right arcs of the dress (user edited)
 
 // Animation
 boolean animating = true; // animation status: running/stopped
-float t=0.1;               // current animaiton time
+float t=0.05;               // current animaiton time
 
 // snapping a picture
 import processing.pdf.*;    // to save screen shots as PDFs
@@ -37,7 +37,7 @@ boolean change=false;   // true when the user has presed a key or moved the mous
 void setup()              // run once
   {
   size(1000, 400, P2D); 
-  frameRate(30);        // draws new frame 30 times a second
+  frameRate(10);        // draws new frame 30 times a second
     int n = 7;
     for(int i=0; i<n; i++) println("i="+i);
   }
@@ -82,7 +82,9 @@ void keyPressed()
   if(key=='f') showControlFrames=!showControlFrames;
   if(key=='c') showConstruction=!showConstruction;
   if(key=='s') showStrobeFrames=!showStrobeFrames;
-  if(key=='a') {animating=true; t=0;}  // start animation
+  if(key=='a') {animating=true; t=0;}  // reset
+  if(key=='z') {animating=false;} // stop animation
+  if(key=='x') {animating=true;} // start animation again
   change=true; // reset to render movie frames for which something changes
   }
   
@@ -178,13 +180,17 @@ void computeParametersForAnimationTime(float t) // computes parameters x, y, r, 
   {
   x = x0 + t*(x1-x0);
   y = y0 - y0*0.3*sqrt(sin(PI*t));
-  b = b0 + b0*0.8*sqrt(sin(PI*t));
-  d = d0 - d0*0.4*sqrt(sin(PI*t));
+  //  y = 300;
+  //b = b0 + b0*0.8*sqrt(sin(PI*t));
+  // d = d0 - d0*0.4*sqrt(sin(PI*t));
+  
+  b = sqrt( sq(_p+r) - sq(y-_p) );
+  d = sqrt( sq(_q+r) - sq(y-_q) );
   }
   
 //*********** TO BE PROVIDED BY STUDENTS  
 // compute blend radius tangent to x-axis at point (0,0) and circle of center (b,y) and radius r   
 float blendRadius(float b, float y, float r) 
   {
-  return 100; // replace with your formula
+  return 500; // replace with your formula
   }
