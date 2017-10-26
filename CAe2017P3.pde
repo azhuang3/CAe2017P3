@@ -38,8 +38,7 @@ void setup()              // run once
   {
   size(1000, 400, P2D); 
   frameRate(30);        // draws new frame 30 times a second
-    int n = 7;
-    for(int i=0; i<n; i++) println("i="+i);
+  computeParametersForAnimationTime(0);
   }
  
 void draw()            // loops forever
@@ -90,10 +89,12 @@ void keyPressed()
   if(key=='c') showConstruction=!showConstruction;
   if(key=='s') showStrobeFrames=!showStrobeFrames;
   if(key=='a') {animating=true; t=0;}  // start animation
+  if(key=='z') {animating=false; t=0;}  // start animation
   if(key=='p') {animating=!animating; }  // start animation
   change=true; // reset to render movie frames for which something changes
   }
-  
+
+float red_theta = 5 * PI / 4;
 void mouseMoved() // press and hold the key you want and then move the mouse (do not press any mouse button)
   {
   if(keyPressed)
@@ -102,6 +103,9 @@ void mouseMoved() // press and hold the key you want and then move the mouse (do
     if(key=='x') {x+=mouseX-pmouseX; y-=mouseY-pmouseY;}
     if(key=='b') {b-=mouseX-pmouseX; _p-=mouseY-pmouseY;}
     if(key=='d') {d+=mouseX-pmouseX; _q-=mouseY-pmouseY;}
+    if(key=='q') {
+      left_theta += (mouseX-pmouseX) * 0.1;
+    }
     }
   change=true; // reset to render movie frames for which something changes
   }
@@ -148,11 +152,11 @@ void showConstruction(float x, float y, float r, float b, float d)
   {
   // compute blend radii
   float p=_p, q=_q; // use gobal values (user controlled) in case we do not want to recompute them automatically
-  if(computingBlendRadii)
-    {
-    p=blendRadius(b,y,r);
-    q=blendRadius(d,y,r);
-    }
+  // if(computingBlendRadii)
+  //   {
+    // p=blendRadius(b,y,r);
+    // q=blendRadius(d,y,r);
+    // }
   
   strokeWeight(2);  
   // draw left arc
@@ -182,6 +186,23 @@ void showGUI()
 // computes current values of parameters x, y, r, b, d for animation parameter t
 // so as to produce a smooth and aesthetically pleasing animation
 // that conveys a specific emotion/enthusiasm of the moving shape
+float left_theta = 5 * PI / 4;
+float right_theta = 7 * PI / 4;
+
+float wrapTo2PI(float angle) {
+  if (angle < 0) {
+    while (angle < 0) {
+      angle += 2 * PI;
+    }
+    return angle;
+  }
+  while (angle > 0) {
+    angle -= 2 * PI;
+  }
+  return angle + 2 * PI;
+}
+
+
 void computeParametersForAnimationTime(float t) { // computes parameters x, y, r, b, d for current t value
     // Linear default
     // x = x0 + t * (x1-x0);
@@ -194,11 +215,21 @@ void computeParametersForAnimationTime(float t) { // computes parameters x, y, r
     // y = y0 + 0.5 * y0 * sin(2 * PI * t - PI);
     b = b0 + t * (b0-b0);
     d = d0 + t * (d0-d0);
-    println("running " + x + " " + y);
 
-    PVector leftCircle = calcCircle(x, g - y, 5 * PI / 4, r);
+    float epsilon = 0.0001; //<>//
+
+    // left_theta = wrapTo2PI(left_theta);
+    // left_theta = constrain(left_theta, PI / 2 + epsilon, 3 * PI / 2 - epsilon);
+    // PVector leftCircle = calcCircle(x, g - y, left_theta, r);
+    left_theta = lerp(4.1 * PI / 4, 5.9 * PI / 4, t);
+    println("Drawing: " + left_theta);
+    PVector leftCircle = calcCircle(x, y, lerp(4.1 * PI / 4, 5.9 * PI / 4, t), r);
     b = x - leftCircle.x;
-    _p = 100;
+    _p = leftCircle.y;
+
+    PVector rightCircle = calcCircle(x, y, lerp(4.1 * PI / 4 + PI / 2, 5.9 * PI / 4 + PI / 2, t), r);
+    d = rightCircle.x - x;
+    _q = rightCircle.y;
 
     // y = y0 - y0 * 0.3 * sqrt(sin(PI * t));
     // b = b0 + b0 * 0.8 * sqrt(sin(PI * t));
@@ -207,44 +238,50 @@ void computeParametersForAnimationTime(float t) { // computes parameters x, y, r
 
 PVector calcCircle(float x, float y, float theta, float r) {
     // tangent point
-    float tangent_x = x + r * cos(theta); // 92
-    float tangent_y = x + r * sin(theta); // 92
+    float tangent_x = x + r * cos(theta); // 92 //<>// //<>// //<>//
+    float tangent_y = y + r * sin(theta); // 92
     // tangent line
     // it's perpendicular to:
-    float perpendicular_m = (tangent_y - y) / (tangent_x - x); 
+    float perpendicular_m = (tangent_y - y) / (tangent_x - x);
     float perpendicular_b = tangent_y - perpendicular_m * tangent_x;
-    stroke(#FF0000);
-    ellipse(tangent_x, g - tangent_y - (height - g), 5, 5);
-    stroke(#00FF00);
-    ellipse(x, g - y, 5, 5);
-    flipLine(tangent_x, tangent_y - (height - g), x, y);
+    // fill(#0000FF);
+    // stroke(#FF0000); // RED
+    flipCirc(tangent_x, tangent_y);
+    // stroke(#00FF00); // GREEN
+    flipCirc(x, y);
 
-
-
-    float tangent_m = -perpendicular_m;
+    float tangent_m = -1/perpendicular_m;
     float tangent_b = tangent_y - tangent_m * tangent_x;
 
+
     // now find center line
-    float tangent_theta = tan(tangent_m);
+    float tangent_theta = atan(tangent_m);
     float center_theta = tangent_theta / 2.0;
-    float center_m = atan(center_theta);
+    float center_m = tan(center_theta);
 
     // find point on center line, it's where the tangent intersects the x-axis
     float center_root = -tangent_b / tangent_m;
+    // stroke(#00FF00); // GREEN
+    flipLine(tangent_x, tangent_y, center_root, 0);
 
-    stroke(#FF0000);
+    // stroke(#FF0000); // RED
     flipLine(center_root, 0, tangent_x, tangent_y);
     float center_b = -center_m * center_root;
 
     float circle_x = (center_b - perpendicular_b) / (perpendicular_m - center_m);
     float circle_y = center_m * circle_x + center_b;
-    stroke(#0000FF);
+    // stroke(#0000FF); // BLUE
     flipLine(circle_x, circle_y, center_root, 0);
+    flipCirc(circle_x, circle_y);
     return new PVector(circle_x, circle_y);
 }
 
+void flipCirc(float x, float y) {
+  // ellipse(x, g - y, 5, 5);
+}
+
 void flipLine(float x, float y, float x1, float y1) {
-    line(x, g - y - (height - g), x1, g - y1 - (height - g));
+    // line(x, g - y, x1, g - y1);
 }
 
 //*********** TO BE PROVIDED BY STUDENTS  
